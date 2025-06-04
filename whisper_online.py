@@ -353,6 +353,20 @@ class OpenaiApiASR(ASRBase):
     def set_translate_task(self):
         self.task = "translate"
 
+class VllmASR(OpenaiApiASR):
+    """Connects to a vLLM-served Whisper model via an OpenAI compatible API."""
+
+    def __init__(self, lan=None, base_url=None, api_key=None, model="whisper", logfile=sys.stderr):
+        self.base_url = base_url or os.environ.get("VLLM_BASE_URL", "http://localhost:8000/v1")
+        self.api_key = api_key or os.environ.get("VLLM_API_KEY")
+        self.modelname = model
+        super().__init__(lan=lan, logfile=logfile)
+
+    def load_model(self, *args, **kwargs):
+        from openai import OpenAI
+        self.client = OpenAI(base_url=self.base_url, api_key=self.api_key)
+        self.transcribed_seconds = 0
+
 
 
 
@@ -771,7 +785,7 @@ def add_shared_args(parser):
     parser.add_argument('--model_dir', type=str, default=None, help="Dir where Whisper model.bin and other files are saved. This option overrides --model and --model_cache_dir parameter.")
     parser.add_argument('--lan', '--language', type=str, default='auto', help="Source language code, e.g. en,de,cs, or 'auto' for language detection.")
     parser.add_argument('--task', type=str, default='transcribe', choices=["transcribe","translate"],help="Transcribe or translate.")
-    parser.add_argument('--backend', type=str, default="faster-whisper", choices=["faster-whisper", "whisper_timestamped", "mlx-whisper", "openai-api"],help='Load only this backend for Whisper processing.')
+    parser.add_argument('--backend', type=str, default="faster-whisper", choices=["faster-whisper", "whisper_timestamped", "mlx-whisper", "openai-api", "vllm"],help='Load only this backend for Whisper processing.')
     parser.add_argument('--vac', action="store_true", default=False, help='Use VAC = voice activity controller. Recommended. Requires torch.')
     parser.add_argument('--vac-chunk-size', type=float, default=0.04, help='VAC sample size in seconds.')
     parser.add_argument('--vad', action="store_true", default=False, help='Use VAD = voice activity detection, with the default parameters.')
@@ -787,6 +801,9 @@ def asr_factory(args, logfile=sys.stderr):
     if backend == "openai-api":
         logger.debug("Using OpenAI API.")
         asr = OpenaiApiASR(lan=args.lan)
+    elif backend == "vllm":
+        logger.debug("Using vLLM server.")
+        asr = VllmASR(lan=args.lan)
     else:
         if backend == "faster-whisper":
             asr_cls = FasterWhisperASR
