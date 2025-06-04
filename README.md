@@ -44,9 +44,13 @@ Alternative, less restrictive, but slower backend is [whisper-timestamped](https
 
 Thirdly, it's also possible to run this software from the [OpenAI Whisper API](https://platform.openai.com/docs/api-reference/audio/createTranscription). This solution is fast and requires no GPU, just a small VM will suffice, but you will need to pay OpenAI for api access. Also note that, since each audio fragment is processed multiple times, the [price](https://openai.com/pricing) will be higher than obvious from the pricing page, so keep an eye on costs while using. Setting a higher chunk-size will reduce costs significantly. 
 Install with: `pip install openai` , [requires Python >=3.8](https://pypi.org/project/openai/).
-For running with the openai-api backend, make sure that your [OpenAI api key](https://platform.openai.com/api-keys) is set in the `OPENAI_API_KEY` environment variable. For example, before running, do: `export OPENAI_API_KEY=sk-xxx` with *sk-xxx* replaced with your api key. 
+For running with the openai-api backend, make sure that your [OpenAI api key](https://platform.openai.com/api-keys) is set in the `OPENAI_API_KEY` environment variable. For example, before running, do: `export OPENAI_API_KEY=sk-xxx` with *sk-xxx* replaced with your api key.
+
+For running with the vllm backend, set `VLLM_BASE_URL` to your vLLM server endpoint and optionally `VLLM_API_KEY` if authentication is needed.
 
 Fourthly, another efficient backend is the [Whisper MLX](https://github.com/ml-explore/mlx-examples/tree/main/whisper)  library, optimized specifically for Apple Silicon. Whisper MLX leverages the performance capabilities of Apple chips (M1, M2...) to deliver faster transcription without requiring a GPU: `pip install mlx-whisper`. All the main whisper models have been converted to the MLX format, and are listed on [Hugging Face Whisper mlx](https://huggingface.co/collections/mlx-community/whisper-663256f9964fbb1177db93dc).
+
+Fifthly, you can use a model served by [vLLM](https://github.com/vllm-project/vllm) via an OpenAI-compatible endpoint. Set the environment variables `VLLM_BASE_URL` and optionally `VLLM_API_KEY` to point to your server and install `openai`.
 
 
 The backend is loaded only when chosen. The unused one does not have to be installed.
@@ -84,7 +88,7 @@ In case of installation issues of opus-fast-mosestokenizer, especially on Window
 ```
 whisper_online.py -h
 usage: whisper_online.py [-h] [--min-chunk-size MIN_CHUNK_SIZE] [--model {tiny.en,tiny,base.en,base,small.en,small,medium.en,medium,large-v1,large-v2,large-v3,large}] [--model_cache_dir MODEL_CACHE_DIR]
-                         [--model_dir MODEL_DIR] [--lan LAN] [--task {transcribe,translate}] [--backend {faster-whisper,whisper_timestamped,openai-api}] [--vac] [--vac-chunk-size VAC_CHUNK_SIZE] [--vad]
+                         [--model_dir MODEL_DIR] [--lan LAN] [--task {transcribe,translate}] [--backend {faster-whisper,whisper_timestamped,openai-api,vllm}] [--vac] [--vac-chunk-size VAC_CHUNK_SIZE] [--vad]
                          [--buffer_trimming {sentence,segment}] [--buffer_trimming_sec BUFFER_TRIMMING_SEC] [-l {DEBUG,INFO,WARNING,ERROR,CRITICAL}] [--start_at START_AT] [--offline] [--comp_unaware]
                          audio_path
 
@@ -106,7 +110,7 @@ options:
                         Source language code, e.g. en,de,cs, or 'auto' for language detection.
   --task {transcribe,translate}
                         Transcribe or translate.
-  --backend {faster-whisper,whisper_timestamped,openai-api}
+  --backend {faster-whisper,whisper_timestamped,openai-api,vllm}
                         Load only this backend for Whisper processing.
   --vac                 Use VAC = voice activity controller. Recommended. Requires torch.
   --vac-chunk-size VAC_CHUNK_SIZE
@@ -246,6 +250,15 @@ overlap, and we limit the processing buffer window.
 ### Performance evaluation
 
 [See the paper.](http://www.afnlp.org/conferences/ijcnlp2023/proceedings/main-demo/cdrom/pdf/2023.ijcnlp-demo.3.pdf)
+
+### Benchmark script
+
+Use `benchmark_vllm_vs_fasterwhisper.py` to compare the offline transcription speed of the local FasterWhisper backend with a vLLM-served model.
+Example:
+
+```bash
+python benchmark_vllm_vs_fasterwhisper.py sample.wav --runs 5
+```
 
 ### Contributions
 
